@@ -8,13 +8,13 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 import datetime
+import time
 
 from crypto import hash_password, check_password, generate_token
 
 app = fastapi.FastAPI()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
 
 @app.get("/")
 def read_root():
@@ -117,11 +117,21 @@ def login(data: login_form):
     else:
         return {"login": "failed"}
 
+class logout_form(BaseModel):
+    token: str
+
+@app.post("/logout", dependencies=[Depends(JWTBearer())])
+def logout(data: logout_form):
+    token = session.query(Token).filter_by(token=data.token).first()
+    session.delete(token)
+    session.commit()
+    return {"logout": "success"}
 
 class adduser_form(BaseModel):
     username: str
     password: str
     email: str
+
 @app.post("/adduser")
 def adduser(data: adduser_form):
     user = Users(username=data.username, password=hash_password(data.password), type='user', email=data.email)
@@ -142,3 +152,11 @@ def adddirectory(directory_name: str, directory_path: str, username: str):
 def listdirectorys():
     directorys = session.query(Directorys).all()
     return {"listdirectorys": directorys}
+
+#validate token
+@app.post("/token", dependencies=[Depends(JWTBearer())])
+def token():
+    return {"token": "valid"}
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port=8000)
