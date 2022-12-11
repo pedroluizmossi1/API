@@ -1,0 +1,25 @@
+{% macro list_directories(directories) %}
+
+    {% for item in directories %}
+    <form action="{{ url_for('listdirectoryfiles') }}" method="GET">
+    <li><button class="dropdown-item" name="directory_name" value="{{ item }}">{{ item }}</button></li>
+    </form>
+    {% endfor %}
+
+{% endmacro %}
+
+{% macro list_directories_list(directories_full) %}
+
+    {% for item in directories_full %}
+        <li class="list-group-item bg-dark text-light border-light" value="{{item.directory_name}}">{{item.directory_name}} - {{item.directory_path}}</li>
+    {% endfor %}
+
+{% endmacro %}
+
+{% macro options_directories(directories) %}
+
+    {% for item in directories %}
+        <option value="{{item}}">{{item}}</option>
+    {% endfor %}
+
+{% endmacro %}

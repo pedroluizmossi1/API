@@ -1,0 +1,13 @@
+{% for category, message in get_flashed_messages(with_categories=True) %}
+  {% if category == 'error' %}
+    <script>
+      alert("{{ message }}");
+    </script>
+  {% endif %}
+
+  {% if category == 'success' %}
+    <script>
+      alert("{{ message }}");
+    </script>
+  {% endif %}
+{% endfor %}

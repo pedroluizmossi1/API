@@ -1,0 +1,78 @@
+
+{% block body %}
+<body>
+  <div class="container bg-dark rounded shadow p-3 col-5" style="width: 700px; height: 400px;">
+    <canvas id="myChart"></canvas>
+  </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+{% endblock %}
+
+{% block javascript %}
+
+<script>
+  chart_data = {{ chart_data|tojson }};
+  
+  Chart.defaults.backgroundColor = '#9BD0F5';
+  Chart.defaults.borderColor = '#333232';
+  Chart.defaults.color = '#000';
+const ctx = document.getElementById('myChart');
+
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['Espaço Total', 'Espaço Usado', 'Espaço Livre'],
+    datasets: [{
+      label: 'Espaço em Disco',
+      data: [parseInt(chart_data.total), parseInt(chart_data.used), parseInt(chart_data.free)],
+      backgroundColor: [
+      'rgba(54, 162, 235, 0.5)',
+      'rgba(255, 99, 132, 0.5)',
+      'rgba(75, 192, 192, 0.5)'
+    ],
+      borderColor: [
+      'rgba(54, 162, 235, 1)',
+      'rgba(255, 99, 132, 1)',
+      'rgba(75, 192, 192, 1)'
+    ],
+      borderWidth: 2,
+      borderRadius: 7
+    }]
+  },
+  options: {
+    scales: {
+      x: {
+        grid: {
+          display: false,
+          color: '#333232'
+        },
+        ticks: { 
+          color: "white"
+        }
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: '#333232'
+        },
+        ticks: { 
+          color: "white",
+          callback: function(value, index, values) {
+            return value + ' GB';
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        labels: {
+          color: 'white'
+        }
+      }
+    }
+  }
+});
+</script>
+
+{% endblock %}
+

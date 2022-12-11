@@ -1,5 +1,19 @@
 body {
-    background-image: linear-gradient(to right top, #00c994, #00c58e, #00c088, #00bc83, #00b87d, #00aa86, #009b8a, #008b88, #126b7a, #284b5e, #282f3a, #181818);
+    background-image: url('wave_dark.svg'), url('wave.svg'), linear-gradient(to right top, #053337, #005d5d, #008b7a, #00bb8e, #12eb96);
     background-repeat: no-repeat;
     background-attachment: fixed;
+    background-position: bottom;
 }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #fff !important;
+}
+
+:root {
+    color-scheme: dark;
+  }
+

@@ -53,13 +53,3 @@ class Directorys(Base):
         return f"Directorys(id={self.id}, directory_name={self.directory_name}, directory_path={self.directory_path}, username={self.username})"
 
 Base.metadata.create_all(engine)
-
-
-def wipe_tokens():
-    tokens = session.query(Token).all()
-    for token in tokens:
-        if (datetime.datetime.utcnow() - token.date).total_seconds() > 86400:
-            session.delete(token)
-            session.commit()
-    time.sleep(3600)
-    wipe_tokens()

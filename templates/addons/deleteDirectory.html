@@ -1,0 +1,26 @@
+{% from 'macros/navbarMacro.html' import options_directories %}
+{% block content %}
+<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="offcanvasDeleteDirectory"
+  aria-labelledby="offcanvasDeleteDirectoryLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasDeleteDirectoryLabel">Deletar Pasta</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <form action="{{ url_for('deletedirectory')}}" method="POST">
+      <div class="mb-3">
+        <div class="dropdown">
+          <select name="selected_directory" class="form-select bg-dark text-light" aria-label="Default select example">
+            <option selected>Selecione a Pasta</option>
+            {{ options_directories(directories) }}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-danger mb-3" id="submitButton">Deletar</button>
+    </form>
+  </div>
+</div>
+
+<script>
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% block content %}
+<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="offcanvasInsertDirectory" aria-labelledby="offcanvasInsertDirectoryLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="offcanvasInsertDirectoryLabel">Adicionar Pasta</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form action="{{ url_for('adddirectory')}}" method="POST">
+        <div class="mb-3">
+            <label for="folderName" class="form-label">Nome da Pasta</label>
+            <input type="text" class="form-control text-bg-dark" id="folderName" placeholder="" name="folderName" value="{{request.form['folderName']}}">
+          </div>
+          <div class="mb-3">
+            <label for="folderPath" class="form-label">Caminho da Pasta</label>
+            <input type="text" class="form-control text-bg-dark" id="folderPath" placeholder="" name="folderPath" value="{{request.form['folderPath']}}">
+          </div>
+          <button type="submit" class="btn btn-primary" id="submitButton">Adicionar</button>
+        </form>
+    </div>
+  </div>
+{% endblock %}

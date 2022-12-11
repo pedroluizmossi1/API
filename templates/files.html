@@ -1,0 +1,70 @@
+{% extends "baseNavbar.html" %}
+
+{% block head %}
+
+{% endblock %}
+{% block content %}
+<body>
+   <div class="container-fluid p-3 ">
+   <div class="row gap-3 justify-content-center">
+      <div class="input-group input-group-lg form-group">
+         <span class="input-group-text bg-dark" id="inputGroup-sizing-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="white" class="bi bi-search" viewBox="0 0 16 16">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+          </svg></span>
+         <input type="text" class="form-control bg-dark text-light" id="searchInput" placeholder="Insira o nome do arquivo e pressione 'ENTER'">
+         <span class="input-group-text bg-dark text-light" id="basic-addon2" title="Tamanho da Pasta - {{folder_size.folder_size}}">{{folder_size.folder_size}}</span>
+       </div>
+       <button onclick="searchFile()" class="btn btn-primary" hidden id="searchButton">Pesquisar</button>
+      {% for file in files|sort(attribute="file_date_human", reverse = True) %}
+         <div class="col-sm-5">
+            <div class="card bg-dark text-light shadow rounded">
+               <div class="card-header" style="padding-bottom: 0px;">
+               <div class="row">
+               <h5 class="col-auto" name="file_name_download" value="{{file.file_name}}">{{file.file_name}}</h5>   
+                  <h5 class="d-flex justify-content-end col">{{file.file_size_human}}</h5>
+               </div>
+               </div>
+               <div class="card-body">
+                  <div class="row">
+                     <p class="card-text col-auto d-inline-block text-truncate" data-toggle="tooltip" title="{{file.file_path}}" style="max-width: 60%;">{{file.file_path}}</p>
+                        <p class="d-flex justify-content-end col">{{file.file_date_human | format_date('short')}} - {{file.file_date_human | format_date('time')}}</p>
+                     </div>
+                  <form action="{{url_for('downloadfile')}}" method="GET">
+                  <button type="submit" class="btn btn-primary" name="file_path_download" value="{{file.file_path}}">Download</button>
+                  </form>
+               </div>
+            </div>
+         </div>
+      {% endfor %}
+   </div>
+   </div>
+
+   {% include 'addons/flashMessage.html' %}
+</body>
+
+<script>
+      searchInput = document.getElementById("searchInput");
+      searchInput.addEventListener("keyup", function(event) {
+         if (event.keyCode === 13) {
+            event.preventDefault();
+            document.getElementById("searchButton").click();
+         }
+      });
+
+     function searchFile(){
+         var searchInput = document.getElementById("searchInput").value;
+         //procure o valor em todos os card-text
+         var cardText = document.getElementsByClassName("card-text");
+         for (var i = 0; i < cardText.length; i++) {
+            var cardTextValue = cardText[i].innerHTML;
+            if (cardTextValue.includes(searchInput)) {
+               cardText[i].parentElement.parentElement.parentElement.parentElement.style.display = "block";
+            } else {
+               cardText[i].parentElement.parentElement.parentElement.parentElement.style.display = "none";
+            }
+            
+         }
+     }
+ </script>
+
+{% endblock %}

@@ -1,18 +1,28 @@
-from flask import Flask, make_response, render_template, request, redirect, url_for, session
+from flask import Flask, make_response, render_template, request, redirect, url_for, session, flash, send_file, stream_with_context, Response
 from flask_session import Session
 import requests
 from pydantic import BaseModel
-
+import json
+import datetime
+import io
+from flask_caching import Cache
 
 api_url = 'http://127.0.0.1:8000'
 
+config = {
+    "DEBUG": True,          # some Flask specific configs
+    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "CACHE_DEFAULT_TIMEOUT": 300
+}
 
 app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
+
+app.config.from_mapping(config)
+cache = Cache(app)
+cache.init_app(app)
 Session(app)
-
-
 
 def set_cookie(response):
     session['token'] = response.json()['token']
@@ -25,6 +35,44 @@ def validate_token():
     else:
         return False
 
+def get_token():
+    token = session.get('token', 'No token')
+    return token
+
+def get_username():
+    username = session.get('login', 'No login')
+    return username
+
+@cache.cached(timeout=120, key_prefix='all_directories')
+def get_all_directories():
+    if validate_token() == True:
+        token = get_token()
+        response = requests.get(api_url + '/listdirectories', headers = {'Authorization': 'Bearer ' + token})
+        directories_full = response.json().get('listdirectories', 'No directories')
+        #get all directory_name from directories
+        directories = [directory['directory_name'] for directory in directories_full]
+        if response.status_code == 200:
+            return directories, directories_full
+
+def delete_all_directories_cache():
+    cache.delete('all_directories')
+
+@cache.cached(timeout=120, key_prefix='disk_space')
+def get_disk_space():
+    if validate_token() == True:
+        token = get_token()
+        response = requests.get(api_url + '/get_disk_space', headers = {'Authorization': 'Bearer ' + token})
+        disk_space = response.json()
+        return disk_space
+
+@cache.cached(timeout=120, key_prefix='folder_size')
+def get_folder_size(directory):
+    if validate_token() == True:
+        token = get_token()
+        response = requests.get(api_url + '/get_folder_size/' + directory, headers = {'Authorization': 'Bearer ' + token})
+        folder_size = response.json()
+        return folder_size
+
 @app.route("/")
 def index():
     if validate_token() == True:
@@ -33,6 +81,18 @@ def index():
         return render_template('index.html')
     
 
+@app.template_filter('format_date')
+def format_date(value, format):
+    date = datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+    if format == 'short':
+        format = "%d/%m/%Y"
+        return date.strftime(format)
+    elif format == 'long':
+        format = "%d/%m/%Y %H:%M:%S"
+        return date.strftime(format)
+    elif format == 'time':
+        format = "%H:%M:%S"
+        return date.strftime(format)
 
 @app.route('/gettoken/')
 def get():
@@ -51,6 +111,7 @@ def login():
         response = requests.post(api_url + '/login', json=user_object)
         if response.status_code == 200:
             set_cookie(response)
+            session['login'] = username
             return redirect(url_for('startpage'))
         else:
             raise Exception('Invalid credentials')
@@ -64,8 +125,6 @@ def logout():
         'token': token
     }
     response = requests.post(api_url + '/logout', headers = {'Authorization': 'Bearer ' + token}, json=token_object)
-    print("Status Code", response.status_code)
-    print("JSON Response ", response.json())
     if response.status_code == 200:
         session.pop('token', None)
         return redirect(url_for('index'))
@@ -96,6 +155,81 @@ def adduser():
 @app.route("/startpage", methods=['GET', 'POST'])
 def startpage():
     if validate_token() == True:
-        return render_template('start_page.html')
+        directories = get_all_directories()
+        return render_template('start_page.html', directories=directories[0], directories_full=directories[1], chart_data=get_disk_space())
     else:
         return redirect(url_for('index'))
+
+@app.route("/adddirectory", methods=['POST'])
+def adddirectory():
+    if validate_token() == True:
+        directory_name = request.form['folderName']
+        directory_path = request.form['folderPath']
+        username = get_username()
+        token = get_token()
+        directory_object = {
+            'directory_name': directory_name,
+            'directory_path': directory_path,
+            'username': username
+        }
+        response = requests.post(api_url + '/adddirectory', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
+        if response.status_code == 200:
+            delete_all_directories_cache()
+            flash('Directory added', 'success')
+            return redirect(url_for('startpage'))
+        else:
+            flash(response.json()['detail'], 'error')
+            return redirect(url_for('startpage'))
+
+@app.route("/deletedirectory", methods=['POST'])
+def deletedirectory():
+    if validate_token() == True:
+        directory_name = request.form['selected_directory']
+        username = get_username()
+        token = get_token()
+        directory_object = {
+            'directory_name': directory_name,
+            'username': username
+        }
+        response = requests.post(api_url + '/deletedirectory', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
+        if response.status_code == 200:
+            delete_all_directories_cache()
+            return redirect(url_for('startpage'))
+        else:
+            flash(response.json()['detail'], 'error')
+            return redirect(url_for('startpage'))
+
+@app.route("/listdirectoryfiles", methods=['GET', 'POST'])
+def listdirectoryfiles():
+    if validate_token() == True:
+        if request.method == 'GET':
+            directory_name = request.args.get('directory_name')
+            token = get_token()
+            directory_object = {
+                'directory_name': directory_name
+            }
+            directories = get_all_directories()
+            folder_size = get_folder_size(directory_name)
+            response = requests.get(api_url + '/listdirectoryfiles', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
+            if response.status_code == 200:
+                files = response.json().get('listdirectoryfiles', 'No files')
+                return render_template('files.html', files=files, directories=directories[0], directories_full=directories[1], folder_size=folder_size)
+            else:
+                flash("Pasta não encontrada", 'error')
+                return redirect(url_for('startpage'))
+
+@app.route("/downloadfile", methods=['GET', 'POST'])
+def downloadfile():
+    if validate_token() == True:
+        if request.method == 'GET':
+            file_path = request.args.get('file_path_download')
+            file_name = request.args.get('file_name_download')
+            token = get_token()
+            response = requests.get(api_url + '/downloadfile/'+ file_path, headers={'Authorization': 'Bearer ' + token})
+            if response.status_code == 200:
+                return send_file(file_path, as_attachment=True, download_name=file_name)
+            else:
+                flash("Arquivo não encontrado", 'error')
+                #keep user in the same page
+                return redirect(request.referrer)
+            

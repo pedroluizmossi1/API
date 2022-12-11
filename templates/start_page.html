@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "baseNavbar.html" %}
 
 {% block head %}
 
@@ -6,7 +6,8 @@
 {% block content %}
 <body>
    
-   <h5>Start Page</h5>
-
+   <div class="p-3"></div>
+   {% include 'addons/flashMessage.html' %}
+   {% include 'addons/chartDiskUsage.html' %}
 </body>
 {% endblock %}
