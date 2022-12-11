@@ -8,7 +8,7 @@ import sqlalchemy
 from pydantic import BaseModel
 import os
 
-from base_start import Users, Token, Directorys, session
+from base_start import Users, Token, Directorys, session, check_user_type
 from crypto import hash_password, check_password, generate_token, JWTBearer
 from os_functions import listalldirectoryfiles, downloadfile_from_path, get_os_disk_space, get_os_folder_size
 
@@ -23,15 +23,26 @@ class login_form(BaseModel):
 def login(data: login_form):
     user = session.query(Users).filter_by(username=data.username).first()
     if user is None:
-        return {"login": "failed"}
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username"
+        )
     elif not check_password(data.password, user.password):
-        return {"login": "failed"}
-
-    token = generate_token()
-    token_add = Token(token=token, username=data.username)
-    session.add(token_add)
-    session.commit()
-    return {"login": "success", "token": token, "username": data.username}
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid password"
+        )
+    elif check_password(data.password, user.password) and user.autorized == False:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not autorized"
+        )
+    elif check_password(data.password, user.password) and user.autorized == True:
+        token = generate_token()
+        token_add = Token(token=token, username=data.username)
+        session.add(token_add)
+        session.commit()
+        return {"login": "success", "token": token, "username": data.username}
 
 class logout_form(BaseModel):
     token: str
@@ -173,3 +184,65 @@ def get_folder_size(folder_name):
     else:
         folder_size = get_os_folder_size(folder_path.directory_path)
         return {"folder_size": folder_size}
+
+class change_user_password_form(BaseModel):
+    username: str
+    old_password: str
+    new_password: str
+
+@app.post("/change_user_password", dependencies=[Depends(JWTBearer())])
+def change_user_password(data: change_user_password_form):
+    user = session.query(Users).filter_by(username=data.username).first()
+    checked_password = check_password(data.old_password, user.password)
+    if user is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="user does not exist"
+        )
+    elif checked_password is False:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="incorrect password"
+        )
+    elif checked_password is True:
+        user.password = hash_password(data.new_password)
+        session.commit()
+        return {"change_user_password": "success"}
+    else:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="error changing password"
+        )
+
+@app.get("/list_users", dependencies=[Depends(JWTBearer())])
+def list_users():
+    #query only username, autorized, and email from users
+    users = session.query(Users.username, Users.type, Users.email, Users.autorized).all()
+    return {"list_users": users}
+
+class change_user_type_form(BaseModel):
+    username: str
+    autorized: str
+
+@app.post("/change_user_type", dependencies=[Depends(JWTBearer())])
+def change_user_type(data: change_user_type_form):
+    if check_user_type(data.username) == "admin":
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="user is admin"
+        )
+    user = session.query(Users).filter_by(username=data.username).first()
+    if user is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="user does not exist"
+        )
+    else:
+        if data.autorized == "True":
+            autorized = True
+        elif data.autorized == "False":
+            autorized = False
+        user.autorized = autorized
+        print(user.autorized)
+        session.commit()
+        return {"change_user_type": "success"}

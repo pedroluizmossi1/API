@@ -52,7 +52,7 @@ class JWTBearer(HTTPBearer):
 
 #add admin user to database if not exist
 if session.query(Users).filter_by(username="admin").first() == None:
-    admin = Users(username='admin', password=hash_password('admin'), type='admin',email="pedroluizmossi@gmail.com",)
+    admin = Users(username='admin', password=hash_password('admin'), type='admin',email="pedroluizmossi@gmail.com", autorized=True)
     session.add(admin)
     session.commit()
 

@@ -5,20 +5,36 @@
 {% endblock %}
 {% block content %}
 <body>
-    <form action="" method="POST">
+  <div class="container py-5 h-100 col-5">
+    <div class="row d-flex justify-content-center align-items-center h-100 p-3 mb-5 rounded shadow">
+      <div class="col text-center">
+
+        <img src="{{ url_for('static', filename='reshot-icon-tools-and-utensils-CZTPHMLXW7.svg')}}" alt="File System SVG" class="mb-5" style="height:150px; width:150px;"/>
+        <h1 class="mb-5">Cadastar Usuário</h1>
+    <form action="" method="POST" class="d-grid col-6 mx-auto">
         <div class="mb-3">
           <label for="username" class="form-label">Usuario</label>
-          <input type="text" class="form-control" id="username" aria-describedby="emailHelp" name="username" value="{{request.form['username']}}">
+          <input type="text" class="form-control bg-dark text-light" id="username" aria-describedby="emailHelp" name="username" value="{{request.form['username']}}">
         </div>
         <div class="mb-3">
           <label for="password" class="form-label">Senha</label>
-          <input type="password" class="form-control" id="password" name="password" value="{{request.form['password']}}">
+          <input type="password" class="form-control bg-dark text-light" id="password" name="password" value="{{request.form['password']}}">
         </div>
         <div class="mb-3">
           <label for="email" class="form-label">Email</label>
-          <input type="email" class="form-control" id="email" name="email" value="{{request.form['email']}}">
+          <input type="email" class="form-control bg-dark text-light" id="email" name="email" value="{{request.form['email']}}">
         </div>
-        <button type="submit" class="btn btn-primary">Cadastrar</button>
-      </form>
+        <div class="d-grid gap-2 p-2">
+        <button type="submit" class="btn btn-primary col-9 mx-auto">Cadastrar</button>
+        </form>
+        <form action="{{url_for ('index') }}" method="GET">
+          <button type="submit" class="btn btn-secondary col-9 mx-auto">Voltar</button>
+          </div>
+        </form>
+      
+      </div>
+    </div>
+  </div>
+  {% include 'addons/flashMessage.html' %}
 </body>
 {% endblock %}

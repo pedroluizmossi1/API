@@ -1,4 +1,4 @@
-from flask import Flask, make_response, render_template, request, redirect, url_for, session, flash, send_file, stream_with_context, Response
+from flask import Flask, make_response, render_template, request, redirect, url_for, session, flash, send_file, stream_with_context, Response, stream_template
 from flask_session import Session
 import requests
 from pydantic import BaseModel
@@ -65,7 +65,6 @@ def get_disk_space():
         disk_space = response.json()
         return disk_space
 
-@cache.cached(timeout=120, key_prefix='folder_size')
 def get_folder_size(directory):
     if validate_token() == True:
         token = get_token()
@@ -114,9 +113,10 @@ def login():
             session['login'] = username
             return redirect(url_for('startpage'))
         else:
-            raise Exception('Invalid credentials')
-
-    return render_template('login.html')
+            flash(response.json()['detail'])
+            return redirect(url_for('login'))
+    else:
+        return render_template('login.html')
 
 @app.route("/logout", methods=['POST'])
 def logout():
@@ -146,9 +146,11 @@ def adduser():
         }
         response = requests.post(api_url + '/adduser', json=user_object)
         if response.status_code == 200:
-            return 'User added'
+            flash('Usuário adicionado com sucesso!')
+            return redirect(url_for('login'))
         else:
-            return 'User not added'
+            flash('Erro ao adicionar usuário!')
+            return redirect(url_for('adduser'))
 
     return render_template('adduser.html')
 
@@ -232,4 +234,66 @@ def downloadfile():
                 flash("Arquivo não encontrado", 'error')
                 #keep user in the same page
                 return redirect(request.referrer)
-            
+
+@app.route("/change_user_password", methods=['GET', 'POST'])
+def change_user_password():
+    if validate_token() == True:
+        if request.method == 'POST':
+            username = get_username()
+            token = get_token()
+            old_password = request.form['old_password']
+            new_password = request.form['new_password']
+            user_object = {
+                'username': username,
+                'old_password': old_password,
+                'new_password': new_password
+            }
+            response = requests.post(api_url + '/change_user_password', headers={'Authorization': 'Bearer ' + token}, json=user_object)
+            if response.status_code == 200:
+                flash('Password changed', 'success')
+                return redirect(url_for('startpage'))
+            else:
+                flash(response.json()['detail'], 'error')
+                return redirect(url_for('startpage'))
+
+@app.route("/config", methods=['GET', 'POST'])
+def config():
+    if validate_token() == True:
+        if request.method == 'GET':
+            users = list_users()
+            return render_template('config.html', users=users)
+
+
+@app.route("/config/<username>/<int:authorized>", methods=['POST'])
+def config_user_authorized(username, authorized):
+    if validate_token() == True:
+        if request.method == 'POST':
+            token = get_token()
+            if authorized == 1:
+                authorized_status = True
+            else:
+                authorized_status = False
+            user_object = {
+                'username': username,
+                'autorized': authorized_status
+            }
+            response = requests.post(api_url + '/change_user_type', headers = {'Authorization': 'Bearer ' + token}, json=user_object)
+            if response.status_code == 200:
+                flash('User updated', 'success')
+                return redirect(url_for('config'))
+            else:
+                flash(response.json()['detail'], 'error')
+                return redirect(url_for('config'))
+
+
+@app.route("/list_users", methods=['GET', 'POST'])
+def list_users():
+    if validate_token() == True:
+        if request.method == 'GET':
+            token = get_token()
+            response = requests.get(api_url + '/list_users', headers={'Authorization': 'Bearer ' + token})
+            if response.status_code == 200:
+                users = response.json().get('list_users', 'No users')
+                return users
+            else:
+                return response.json()['detail']

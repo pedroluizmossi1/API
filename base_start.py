@@ -21,7 +21,8 @@ class Users(Base):
     type = sqlalchemy.Column(sqlalchemy.String, default='user')
     email = sqlalchemy.Column(sqlalchemy.String)
     date = sqlalchemy.Column(
-    sqlalchemy.DateTime, default=datetime.datetime.utcnow)
+    sqlalchemy.DateTime, default=datetime.datetime.utcnow),
+    autorized = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
 
     def __repr__(self):
         return f"User(id={self.id}, username={self.username}, password={self.password}, type={self.type}, email={self.email})"
@@ -53,3 +54,10 @@ class Directorys(Base):
         return f"Directorys(id={self.id}, directory_name={self.directory_name}, directory_path={self.directory_path}, username={self.username})"
 
 Base.metadata.create_all(engine)
+
+def check_user_type(username):
+    user = session.query(Users).filter_by(username=username).first()
+    if user is None:
+        return None
+    else:
+        return user.type
