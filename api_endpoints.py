@@ -155,13 +155,12 @@ def token():
 class downloadfile_form(BaseModel):
     file_path: str
 
-@app.get("/downloadfile/{file_path}", dependencies=[Depends(JWTBearer())])
+@app.get("/downloadfile", dependencies=[Depends(JWTBearer())])
 def downloadfile(file_path):
-    #check if file exists
     if not os.path.isfile(file_path):
         raise fastapi.HTTPException(
             status_code=422, 
-            detail="file does not exist"
+            detail="file does not exist" + file_path
         )
     else: 
         raise fastapi.HTTPException(

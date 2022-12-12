@@ -126,7 +126,7 @@ def index():
     if validate_token() == True:
         return redirect(url_for('startpage'))
     else:
-        return render_template('index.html')
+        return render_template('index.html', title='Home')
 
 @app.route('/gettoken/')
 def get():
@@ -150,7 +150,7 @@ def login():
             flash(response.json()['detail'], 'error')
             return redirect(url_for('login'))
     else:
-        return render_template('login.html')
+        return render_template('login.html', title='Login')
 
 @app.route("/logout", methods=['POST'])
 def logout():
@@ -191,7 +191,7 @@ def adduser():
 @app.route("/startpage", methods=['GET', 'POST'])
 def startpage():
     if validate_token() == True:
-        return stream_template('start_page.html')
+        return stream_template('start_page.html', title="Inicio")
     else:
         return redirect(url_for('index'))
 
@@ -243,12 +243,11 @@ def listdirectoryfiles():
             directory_object = {
                 'directory_name': directory_name
             }
-            directories = get_all_directories()
             folder_size = get_folder_size(directory_name)
             response = requests.get(api_url + '/listdirectoryfiles', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
             if response.status_code == 200:
                 files = response.json().get('listdirectoryfiles', 'No files')
-                return render_template('files.html', files=files, folder_size=folder_size)
+                return stream_template('files.html', files=files, folder_size=folder_size, title=directory_name)
             else:
                 flash("Pasta não encontrada", 'error')
                 return redirect(url_for('startpage'))
@@ -260,11 +259,11 @@ def downloadfile():
             file_path = request.args.get('file_path_download')
             file_name = request.args.get('file_name_download')
             token = get_token()
-            response = requests.get(api_url + '/downloadfile/'+ file_path, headers={'Authorization': 'Bearer ' + token})
+            response = requests.get(api_url + '/downloadfile', headers={'Authorization': 'Bearer ' + token}, params={'file_path': file_path})
             if response.status_code == 200:
                 return send_file(file_path, as_attachment=True, download_name=file_name)
             else:
-                flash("Arquivo não encontrado", 'error')
+                flash(response.json(), 'error')
                 #keep user in the same page
                 return redirect(request.referrer)
 
@@ -296,7 +295,7 @@ def config():
         if request.method == 'GET':
             users = list_users()
             configs = get_all_configs()
-            return render_template('config.html', users=users, configs=configs)
+            return render_template('config.html', users=users, configs=configs, title="Configurações")
     else:
         return redirect(url_for('startpage'))
 
