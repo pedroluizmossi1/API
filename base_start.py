@@ -2,6 +2,9 @@ import sqlalchemy
 import datetime
 from sqlalchemy.orm import declarative_base, sessionmaker
 import time
+from fastapi import HTTPException, Header, status, Depends
+import configparser
+
 
 timezone = datetime.timezone(datetime.timedelta(hours=-3))
 timezone_br = datetime.datetime.now(timezone)
@@ -53,6 +56,44 @@ class Directorys(Base):
     def __repr__(self):
         return f"Directorys(id={self.id}, directory_name={self.directory_name}, directory_path={self.directory_path}, username={self.username})"
 
+class Config(Base):
+    __tablename__ = 'config'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    config_name = sqlalchemy.Column(sqlalchemy.String, unique=True)
+    config_value = sqlalchemy.Column(sqlalchemy.String, unique=True)
+    config_description = sqlalchemy.Column(sqlalchemy.String)
+    username = sqlalchemy.Column(sqlalchemy.String)
+    date = sqlalchemy.Column(
+        sqlalchemy.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f"Config(id={self.id}, config_name={self.config_name}, config_value={self.config_value}, username={self.username})"
+
+    def check_config(config_name):
+        config = session.query(Config).filter_by(config_name=config_name).first()
+        if config is None:
+            return None
+        else:
+            return config.config_value
+
+    def create_config(config_name, config_value, config_description, username):
+        config = Config(config_name=config_name, config_value=config_value, config_description=config_description, username=username)
+        session.add(config)
+        session.commit()
+        return config
+
+    def update_config(config_name, config_value, username):
+        config = session.query(Config).filter_by(config_name=config_name).first()
+        config.config_value = config_value
+        config.username = username
+        config.date = timezone_br
+        session.commit()
+        return config
+    
+    def get_all_configs():
+        config = session.query(Config).all()
+        return config
+
 Base.metadata.create_all(engine)
 
 def check_user_type(username):
@@ -61,3 +102,30 @@ def check_user_type(username):
         return None
     else:
         return user.type
+
+def check_username_with_token(token):
+    token = session.query(Token).filter_by(token=token).first()
+    if token is None:
+        return None
+    else:
+        return token.username
+
+def check_admin_with_token(token: str):
+    token = session.query(Token).filter_by(token=token).first()
+    user = session.query(Users).filter_by(username=token.username).first()
+    if token is None:
+        return HTTPException(status_code=401, detail="Not authorized")
+    elif user.type == 'admin':
+        return True
+    else:
+        raise HTTPException(status_code=401, detail="Not authorized")
+
+#if config parameter is not set, set default value
+
+if Config.check_config('api_url') is None:
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    api_url = config['FASTAPI']['api_url']
+    Config.create_config('api_url', api_url, 'URL do FASTAPI', 'admin')
+
+

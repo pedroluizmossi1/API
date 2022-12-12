@@ -1,7 +1,7 @@
 
 {% block body %}
 <body>
-  <div class="container bg-dark rounded shadow p-3 col-5" style="width: 700px; height: 400px;">
+  <div class="container bg-dark rounded shadow p-3" style="width: 700px; height: 400;">
     <canvas id="myChart"></canvas>
   </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,8 +11,7 @@
 {% block javascript %}
 
 <script>
-  chart_data = {{ chart_data|tojson }};
-  
+  chart_data = {{ get_disk_space()|tojson }};
   Chart.defaults.backgroundColor = '#9BD0F5';
   Chart.defaults.borderColor = '#333232';
   Chart.defaults.color = '#000';

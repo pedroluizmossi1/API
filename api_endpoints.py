@@ -1,14 +1,15 @@
 import fastapi
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import FastAPI, Body, Depends, HTTPException, status, Request, Response
+from fastapi import FastAPI, Body, Depends, HTTPException, status, Request, Response, Depends
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPBearer
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import sqlalchemy
 from pydantic import BaseModel
 import os
 
-from base_start import Users, Token, Directorys, session, check_user_type
+from base_start import Users, Token, Directorys, session, check_user_type, check_username_with_token, check_admin_with_token, Config
 from crypto import hash_password, check_password, generate_token, JWTBearer
 from os_functions import listalldirectoryfiles, downloadfile_from_path, get_os_disk_space, get_os_folder_size
 
@@ -42,7 +43,7 @@ def login(data: login_form):
         token_add = Token(token=token, username=data.username)
         session.add(token_add)
         session.commit()
-        return {"login": "success", "token": token, "username": data.username}
+        return {"login": "success", "token": token, "username": data.username, "type": user.type}
 
 class logout_form(BaseModel):
     token: str
@@ -189,11 +190,13 @@ class change_user_password_form(BaseModel):
     username: str
     old_password: str
     new_password: str
+    token: str
 
 @app.post("/change_user_password", dependencies=[Depends(JWTBearer())])
 def change_user_password(data: change_user_password_form):
     user = session.query(Users).filter_by(username=data.username).first()
     checked_password = check_password(data.old_password, user.password)
+    checked_username = check_username_with_token(data.token)
     if user is None:
         raise fastapi.HTTPException(
             status_code=422, 
@@ -204,7 +207,7 @@ def change_user_password(data: change_user_password_form):
             status_code=422, 
             detail="incorrect password"
         )
-    elif checked_password is True:
+    elif checked_password is True and data.username == checked_username:
         user.password = hash_password(data.new_password)
         session.commit()
         return {"change_user_password": "success"}
@@ -214,10 +217,13 @@ def change_user_password(data: change_user_password_form):
             detail="error changing password"
         )
 
+class User(BaseModel):
+    username: str
+    user_type: str
+
 @app.get("/list_users", dependencies=[Depends(JWTBearer())])
-def list_users():
-    #query only username, autorized, and email from users
-    users = session.query(Users.username, Users.type, Users.email, Users.autorized).all()
+def list_users(token: str = Depends(check_admin_with_token)):
+    users = session.query(Users).all()
     return {"list_users": users}
 
 class change_user_type_form(BaseModel):
@@ -225,7 +231,7 @@ class change_user_type_form(BaseModel):
     autorized: str
 
 @app.post("/change_user_type", dependencies=[Depends(JWTBearer())])
-def change_user_type(data: change_user_type_form):
+def change_user_type(data: change_user_type_form, token: str = Depends(check_admin_with_token)):
     if check_user_type(data.username) == "admin":
         raise fastapi.HTTPException(
             status_code=422, 
@@ -246,3 +252,40 @@ def change_user_type(data: change_user_type_form):
         print(user.autorized)
         session.commit()
         return {"change_user_type": "success"}
+
+class delete_user_form(BaseModel):
+    username: str
+
+@app.post("/delete_user", dependencies=[Depends(JWTBearer())])
+def delete_user(data: delete_user_form, token: str = Depends(check_admin_with_token)):
+    if check_user_type(data.username) == "admin":
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="user is admin"
+        )
+    user = session.query(Users).filter_by(username=data.username).first()
+    if user is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="user does not exist"
+        )
+    else:
+        session.delete(user)
+        session.commit()
+        return {"delete_user": "success"}
+
+@app.get("/all_folder_size", dependencies=[Depends(JWTBearer())])
+def all_folder_size():
+    folders_paths = session.query(Directorys).all()
+    data=[]
+    for folder in folders_paths:
+        folder = {"folder_name": folder.directory_name, "folder_size": get_os_folder_size(folder.directory_path)}
+        for key, value in folder.items():
+            folder[key] = value
+        data.append(folder)
+    return {"all_folder_size": data}
+
+@app.get("/get_all_configs", dependencies=[Depends(JWTBearer())])
+def all_configs(token: str = Depends(check_admin_with_token)):
+    configs = Config.get_all_configs()
+    return {"all_configs": configs}

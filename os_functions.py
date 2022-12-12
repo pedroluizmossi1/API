@@ -1,4 +1,6 @@
 import os
+import glob
+from multiprocessing import Pool
 from pydantic import BaseModel
 import time
 from starlette.responses import FileResponse
@@ -43,10 +45,14 @@ def get_os_disk_space():
     free = bytestohuman(free)
     return total, used, free
 
-def get_os_folder_size(folder):
-    total_size = 0
-    for dirpath, dirnames, filenames in os.walk(folder):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            total_size += os.path.getsize(fp)
+def get_os_folder_size(folder_path):
+    # Use glob to get a list of all files in the directory
+    filenames = glob.glob(os.path.join(folder_path, '*'))
+
+    # Use a pool of workers to process the files in parallel
+    with Pool() as pool:
+        # Map the os.path.getsize function to each file in the list
+        total_size = sum(pool.map(os.path.getsize, filenames))
+
     return bytestohuman(total_size)
+
