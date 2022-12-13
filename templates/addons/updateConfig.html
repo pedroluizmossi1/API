@@ -1,0 +1,31 @@
+{% block content %}
+<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="offcanvasUpdateConfig" aria-labelledby="offcanvasUpdateConfigLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="offcanvasUpdateConfig">Editar Configuração</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <form action="{{url_for('config_config_update_fields')}}" method="POST">   
+        <div class="mb-3">
+            <label for="configName" class="form-label">Configuração</label>
+            <input type="text" class="form-control text-bg-secondary " id="configName" placeholder="" name="configName" value="{{request.form['configName']}}" required minlength="3" readonly>
+          </div>
+        <div class="mb-3">
+            <label for="configValue" class="form-label">Valor da Configuração</label>
+            <input type="text" class="form-control text-bg-dark" id="configValue" placeholder="" name="configValue" value="{{request.form['configValue']}}" required minlength="5">
+          </div>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+    </div>
+  </div>
+
+  <script>
+    var myModal = document.getElementById('offcanvasUpdateConfig')
+    var myInput = document.getElementById('offcanvasUpdateConfig')
+  
+    myModal.addEventListener('shown.bs.modal', function () {
+      myInput.focus()
+    })
+
+  </script>
+{% endblock %}

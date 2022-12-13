@@ -11,7 +11,7 @@
       <div class="row">
          <div class="col">
             <div class="container rounded shadow bg-dark text-light p-3">
-               <h3 class="mb-3">Autorizar Usuários</h3>
+               <h3 class="mb-3">Usuários</h3>
                <table class="table text-light">
                   <thead>
                      <tr>
@@ -71,6 +71,7 @@
                            </form>
                         </td>
                         <td>
+                           {% if isAdmin() == True %}
                            <button type="submit" class="btn btn-primary" value="{{ user.username }}" onclick="userUpdateCanvas(this.value)"
                               data-bs-toggle="offcanvas" data-bs-target="#offcanvasUpdateUser"
                               aria-controls="offcanvasUpdateUser">
@@ -81,6 +82,7 @@
                                  <path
                                     d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
                               </svg></button>
+                           {% endif %}
                         </td>
                      </tr>
                      {% endfor %}
@@ -88,7 +90,7 @@
                </table>
             </div>
          </div>
-         <div class="col">
+         <div class="col-5">
             <div class="container rounded shadow bg-dark text-light p-3">
                <h3 class="mb-3">Configurações do Sistema</h3>
                <table class="table text-light">
@@ -109,18 +111,16 @@
                         <td>{{ config.config_value }}</td>
                         <td>{{ config.config_description }}</td>
                         <td>
-                           <form action="" method="POST" name="user_form">
-                              <button type="submit" class="btn btn-primary"
-                                 onclick="deleteEventConfirmation()">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white"
-                                    class="bi bi-gear" viewBox="0 0 16 16"
-                                    style="padding-bottom: 15%; padding-top: 0%;">
-                                    <path
-                                       d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
-                                    <path
-                                       d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
-                                 </svg></button>
-                           </form>
+                           <button type="submit" class="btn btn-primary" value="{{ config.config_name }}" onclick="configUpdateCanvas(this.value)"
+                           data-bs-toggle="offcanvas" data-bs-target="#offcanvasUpdateConfig"
+                           aria-controls="offcanvasUpdateConfig">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white"
+                              class="bi bi-gear" viewBox="0 0 16 16" style="padding-bottom: 15%; padding-top: 0%;">
+                              <path
+                                 d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" />
+                              <path
+                                 d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
+                           </svg></button>
                         </td>
                      </tr>
                      {% endfor %}
@@ -135,6 +135,7 @@
 
    {% include 'addons/flashMessage.html' %}
    {% include 'addons/updateUser.html' %}
+   {% include 'addons/updateConfig.html' %}
 
    <script>
 
@@ -168,7 +169,6 @@
                document.getElementById("oldUserName").value = user["username"];
                document.getElementById("userEmail").value = user["email"]
                let selected_user = user["username"];
-               console.log(selected_user);
                userTypeElement = document.getElementById('userType');
                if (user["type"] == "admin") {
                   document.getElementById("userType").value = 1
@@ -178,6 +178,19 @@
             }
          }
       }
+
+      system_configs = {{ configs|tojson }};
+
+      function configUpdateCanvas(self) {
+         for (var key in system_configs) {
+            if (system_configs[key]["config_name"] == self) {
+               config = system_configs[key];
+               document.getElementById("configName").value = config["config_name"]
+               document.getElementById("configValue").value = config["config_value"]
+            }
+         }
+      }
+
 
    </script>
 </body>

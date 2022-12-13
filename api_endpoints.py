@@ -93,8 +93,8 @@ def change_user_autorization(data: Users.Api_update_autorized, token: str = Depe
 
 @app.put("/user/type", dependencies=[Depends(JWTBearer())])
 def change_user_type(data: Users.Api_update_type, token: str = Depends(check_admin_with_token)):
-    user = check_user_exists(data.old_username)
-    admin = Users.Api_check_admin.check_admin(data.old_username)
+    user = check_user_exists(data.username)
+    admin = Users.Api_check_admin.check_admin(data.username)
     if admin:
         raise fastapi.HTTPException(
             status_code=422, 
@@ -106,7 +106,7 @@ def change_user_type(data: Users.Api_update_type, token: str = Depends(check_adm
                 detail="Usuário não existe"
             )
     elif user is not None and admin is False:
-        Users.Api_update_type.update_type(data.old_username, data.new_type)
+        Users.Api_update_type.update_type(data.username, data.type)
         return {"detail": "Tipo alterado com sucesso"}
     else:
         raise fastapi.HTTPException(
@@ -289,3 +289,14 @@ def disk_space():
 def all_configs(token: str = Depends(check_admin_with_token)):
     configs = Config.get_all_configs()
     return {"all_configs": configs}
+
+@app.put("/config", dependencies=[Depends(JWTBearer())])
+def update_config(data: Config.Api_update, token: str = Depends(check_admin_with_token)):
+    username = check_username_with_token(token)
+    config = Config.Api_update.update_config(data.config_name, data.config_value, username)
+    if config is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="Configuração não existe"
+        )
+    return {"detail": "Configuração alterada com sucesso"}

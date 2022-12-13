@@ -298,6 +298,14 @@ def config():
     else:
         return redirect(url_for('startpage'))
 
+@app.route("/backup", methods=['GET', 'POST'])
+def backup():
+    if validate_token() == True and is_admin_from_cache() == True:
+        if request.method == 'GET':
+            return render_template('backup.html', title="Backup")
+    else:
+        return redirect(url_for('startpage'))
+
 @app.route("/config/<username>/<int:authorized>", methods=['POST'])
 def config_user_authorized(username, authorized):
     if validate_token() == True:
@@ -329,57 +337,22 @@ def config_user_update_fields():
             email = request.form['userEmail']
             userType = request.form['userType']
 
-            update_username = {
-                'old_username': old_username, 
-                'new_username': username
-            }
-
-            update_email = {
-                'username': username,
-                'email': email
-            }
-
-            update_userType = {
-                'username': username,
-                'userType': userType
-            }
-            print(update_username)
-            if len(username) > 3 :
-                response = requests.put(api_url + '/user/name', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=update_username)
-                if response.status_code == 200:
-                    flash(response.json()['detail'], 'success')
-                    return redirect(url_for('config'))
-                else:
-                    flash(response.json()['detail'], 'error')
-                    return redirect(url_for('config'))
-            elif len(username) < 3:
-                flash("Nome de usuário muito curto", 'error')
+            #check if username, email or userType is empty
+            if username == '' or email == '' or userType == '':
+                flash("Preencha todos os campos", 'error')
                 return redirect(url_for('config'))
+            else:
+                response_name = requests.put(api_url + '/user/name', headers={'Authorization': 'Bearer ' + token}, params={'token':token} ,json={'old_username': old_username, 'new_username': username})
+                response_email = requests.put(api_url + '/user/email', headers={'Authorization': 'Bearer ' + token}, params={'token':token} ,json={'username':username, 'email': email})
+                response_type = requests.put(api_url + '/user/type', headers={'Authorization': 'Bearer ' + token}, params={'token':token} ,json={'username':username, 'type': userType})
 
-            if len(email) > 3 :
-                response = requests.put(api_url + '/user/email', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=update_email)
-                if response.status_code == 200:
-                    flash(response.json()['detail'], 'success')
-                    return redirect(urrto", 'error')
-                return redirect(url_for('config'))
-
-            if len(userType) > 3 :
-                response = requests.put(api_url + '/user/type', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=update_userType)
-                if response.status_code == 200:
-                    flash(response.json()['detail'], 'success')
+                if response_name.status_code == 200 or response_email.status_code == 200 or response_type.status_code == 200:
+                    flash("Informações atualizadas com sucesso", 'success')
                     return redirect(url_for('config'))
                 else:
-                    flash(response.json()['detail'], 'error')
+                    flash("Erro ao atualizar informações", 'error')
                     return redirect(url_for('config'))
-            elif len(userType) < 3:
-                flash("Tipo de usuário muito curto", 'error')
-                return redirect(url_for('config'))l_for('config'))
-                else:
-                    flash(response.json()['detail'], 'error')
-                    return redirect(url_for('config'))
-            elif len(email) < 3:
-                flash("Email muito curto", 'error')
-            
+
 @app.route("/list_users", methods=['GET', 'POST'])
 def list_users():
     if validate_token() == True:
@@ -405,6 +378,26 @@ def delete_user(username):
                 flash(response.json()['detail'], 'error')
                 return redirect(url_for('config'))
 
+
+@app.route("/config/config", methods=['POST'])
+def config_config_update_fields():
+    if validate_token() == True and is_admin_from_cache() == True:
+        if request.method == 'POST':
+            token = get_token()
+            config_name = request.form['configName']
+            config_value = request.form['configValue']
+            #check if config_name or config_value is empty
+            if config_name == '' or config_value == '':
+                flash("Preencha todos os campos", 'error')
+                return redirect(url_for('config'))
+            else:
+                response = requests.put(api_url + '/config', headers={'Authorization': 'Bearer ' + token}, params={'token':token} ,json={'config_name': config_name, 'config_value': config_value})
+                if response.status_code == 200:
+                    flash("Informações atualizadas com sucesso", 'success')
+                    return redirect(url_for('config'))
+                else:
+                    flash("Erro ao atualizar informações", 'error')
+                    return redirect(url_for('config'))
 
 #Jinja2 global functions
 app.jinja_env.globals.update(get_disk_space=get_disk_space, isAdmin=is_admin_from_cache, get_all_directories=get_all_directories, get_all_folders_size=get_all_folders_size)

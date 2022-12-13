@@ -171,9 +171,16 @@ class Users(Base):
         def update_type(username, type):
             user = session.query(Users).filter_by(username=username).first()
             try:
-                user.type = type
-                session.commit()
-                return user
+                if type == '1':
+                    user.type = 'admin'
+                    session.commit()
+                    return user
+                elif type == '2':
+                    user.type = 'user'
+                    session.commit()
+                    return user
+                else:
+                    return None
             except Exception as error:
                 return None
 
@@ -304,17 +311,160 @@ class Config(Base):
         session.commit()
         return config
 
-    def update_config(config_name, config_value, username):
-        config = session.query(Config).filter_by(config_name=config_name).first()
-        config.config_value = config_value
-        config.username = username
-        config.date = timezone_br
-        session.commit()
-        return config
+    class Api_update(BaseModel):
+        config_name: str
+        config_value: str
+    
+        def update_config(config_name, config_value, username):
+            config = session.query(Config).filter_by(config_name=config_name).first()
+            config.config_value = config_value
+            config.username = username
+            config.date = timezone_br
+            session.commit()
+            if config_name == 'api_url':
+                config = configparser.ConfigParser()
+                with open('config.ini', 'w') as configfile:
+                    config['FASTAPI'] = {'api_url': config_value}
+                    config.write(configfile)
+                
+
+            return config
     
     def get_all_configs():
         config = session.query(Config).all()
         return config
+
+
+class Backups(Base):
+    __tablename__ = 'backups'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    backup_name = sqlalchemy.Column(sqlalchemy.String, unique=True)
+    backup_path = sqlalchemy.Column(sqlalchemy.String)
+    time = sqlalchemy.Column(sqlalchemy.String)
+    interval = sqlalchemy.Column(sqlalchemy.String)
+    connection_string = sqlalchemy.Column(sqlalchemy.String)
+    backup_type = sqlalchemy.Column(sqlalchemy.String)
+    backup_status = sqlalchemy.Column(sqlalchemy.String)
+    backup_user = sqlalchemy.Column(sqlalchemy.String)
+    backup_password = sqlalchemy.Column(sqlalchemy.String)
+    username = sqlalchemy.Column(sqlalchemy.String)
+    date = sqlalchemy.Column(
+        sqlalchemy.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f"Backups(id={self.id}, backup_name={self.backup_name}, backup_path={self.backup_path}, time={self.time}, interval={self.interval}, connection_string={self.connection_string}, backup_type={self.backup_type}, backup_status={self.backup_status}, backup_user={self.backup_user}, backup_password={self.backup_password}, username={self.username})"
+
+    class Api_add(BaseModel):
+        backup_name: str
+        backup_path: str
+        time: str
+        interval: str
+        connection_string: str
+        backup_type: str
+        backup_status: str
+        backup_user: str
+        backup_password: str
+        username: str
+
+        def add_backup(backup_name, backup_path, time, interval, connection_string, backup_type, backup_status, backup_user, backup_password, username):
+            try:
+                backup = Backups(backup_name=backup_name, backup_path=backup_path, time=time, interval=interval, connection_string=connection_string, backup_type=backup_type, backup_status=backup_status, backup_user=backup_user, backup_password=backup_password, username=username)
+                session.add(backup)
+                session.commit()
+                return backup
+            except Exception as error:
+                session.flush()
+                session.rollback()
+                return None
+
+    class Api_update(BaseModel):
+        backup_name: str
+        backup_path: str
+        time: str
+        interval: str
+        connection_string: str
+        backup_type: str
+        backup_status: str
+        backup_user: str
+        backup_password: str
+        username: str
+
+        def update_backup(backup_name, backup_path, time, interval, connection_string, backup_type, backup_status, backup_user, backup_password, username):
+            backup = session.query(Backups).filter_by(backup_name=backup_name).first()
+            backup.backup_path = backup_path
+            backup.time = time
+            backup.interval = interval
+            backup.connection_string = connection_string
+            backup.backup_type = backup_type
+            backup.backup_status = backup_status
+            backup.backup_user = backup_user
+            backup.backup_password = backup_password
+            backup.username = username
+            backup.date = timezone_br
+            session.commit()
+            return backup
+
+    def get_all_backups():
+        backup = session.query(Backups).all()
+        return backup
+
+    def get_backup(backup_name):
+        backup = session.query(Backups).filter_by(backup_name=backup_name).first()
+        return backup
+
+    def delete_backup(backup_name):
+        backup = session.query(Backups).filter_by(backup_name=backup_name).first()
+        session.delete(backup)
+        session.commit()
+        return backup
+
+# create table to save backups logs and status
+class Backups_logs(Base):
+    __tablename__ = 'backups_logs'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    backup_id = sqlalchemy.Column(sqlalchemy.Integer)
+    backup_name = sqlalchemy.Column(sqlalchemy.String)
+    backup_status = sqlalchemy.Column(sqlalchemy.String)
+    backup_log = sqlalchemy.Column(sqlalchemy.String)
+    backup_user = sqlalchemy.Column(sqlalchemy.String)
+    date = sqlalchemy.Column(
+        sqlalchemy.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f"Backups_logs(id={self.id}, backup_id={self.backup_id}, backup_name={self.backup_name}, backup_status={self.backup_status}, backup_log={self.backup_log}, backup_user={self.backup_user})"
+
+    class Api_add(BaseModel):
+        backup_id: int
+        backup_name: str
+        backup_status: str
+        backup_log: str
+        backup_user: str
+
+        def add_backup_log(backup_id, backup_name, backup_status, backup_log, backup_user):
+            try:
+                backup_log = Backups_logs(backup_id=backup_id, backup_name=backup_name, backup_status=backup_status, backup_log=backup_log, backup_user=backup_user)
+                session.add(backup_log)
+                session.commit()
+                return backup_log
+            except Exception as error:
+                session.flush()
+                session.rollback()
+                return None
+
+    def get_all_backups_logs():
+        backup_log = session.query(Backups_logs).all()
+        return backup_log
+
+    def get_backup_log(backup_name):
+        backup_log = session.query(Backups_logs).filter_by(backup_name=backup_name).first()
+        return backup_log
+
+    def get_backups_status(backup_status):
+        backup_log = session.query(Backups_logs).filter_by(backup_status=backup_status).all()
+        return backup_log
+
+
+        
 
 Base.metadata.create_all(engine)
 
