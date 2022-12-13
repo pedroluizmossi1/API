@@ -18,8 +18,8 @@
 {% endmacro %}
 
 {% macro options_directories(directories) %}
-
-    {% for item in directories %}
+{% set directories = get_all_directories() %}
+    {% for item in directories[0] %}
         <option value="{{item}}">{{item}}</option>
     {% endfor %}
 
