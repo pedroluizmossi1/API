@@ -3,9 +3,7 @@ from flask_session import Session
 from flask.views import View
 import requests
 from pydantic import BaseModel
-import json
 import datetime
-import io
 from flask_caching import Cache
 import configparser
 
@@ -36,8 +34,8 @@ def set_cookie(response):
     session['username'] = response.json()['username']
 
 def validate_token():
-    token = session.get('token', 'No token')
-    response = requests.post(api_url + '/token', headers = {'Authorization': 'Bearer ' + token})
+    token = get_token()
+    response = requests.get(api_url + '/token', headers = {'Authorization': 'Bearer ' + token})
     if response.status_code == 200:
         return True
     else:
@@ -48,15 +46,15 @@ def get_token():
     return token
 
 def get_username():
-    username = session.get('login', 'No login')
+    username = session.get('username', 'anonymous')
     return username
 
 @cache.cached(timeout=120, key_prefix='all_directories')
 def get_all_directories():
     if validate_token() == True:
         token = get_token()
-        response = requests.get(api_url + '/listdirectories', headers = {'Authorization': 'Bearer ' + token})
-        directories_full = response.json().get('listdirectories', 'No directories')
+        response = requests.get(api_url + '/directory/all', headers = {'Authorization': 'Bearer ' + token})
+        directories_full = response.json().get('directories', 'No directories')
         #get all directory_name from directories
         directories = [directory['directory_name'] for directory in directories_full]
         if response.status_code == 200:
@@ -66,7 +64,7 @@ def get_all_directories():
 def get_disk_space():
     if validate_token() == True:
         token = get_token()
-        response = requests.get(api_url + '/get_disk_space', headers = {'Authorization': 'Bearer ' + token})
+        response = requests.get(api_url + '/disk/space', headers = {'Authorization': 'Bearer ' + token})
         chart_data = response.json()
         return chart_data
 
@@ -74,7 +72,7 @@ def get_disk_space():
 def get_folder_size(directory):
     if validate_token() == True:
         token = get_token()
-        response = requests.get(api_url + '/get_folder_size/' + directory, headers = {'Authorization': 'Bearer ' + token})
+        response = requests.get(api_url + '/directory/size/', headers = {'Authorization': 'Bearer ' + token}, params={'folder_name': directory})
         folder_size = response.json()
         return folder_size
 
@@ -82,7 +80,7 @@ def get_folder_size(directory):
 def get_all_folders_size():
     if validate_token() == True:
         token = get_token()
-        response = requests.get(api_url + '/all_folder_size', headers = {'Authorization': 'Bearer ' + token})
+        response = requests.get(api_url + '/directory/size/all', headers = {'Authorization': 'Bearer ' + token})
         all_folders_size = response.json()
         return all_folders_size
 
@@ -110,7 +108,7 @@ def format_date(value, format):
 def get_all_configs():
     if validate_token() == True:
         token = get_token()
-        response = requests.get(api_url + '/get_all_configs', headers = {'Authorization': 'Bearer ' + token}, params={'token': token})
+        response = requests.get(api_url + '/config/all', headers = {'Authorization': 'Bearer ' + token}, params={'token': token})
         all_configs = response.json()["all_configs"]
         return all_configs
 
@@ -160,7 +158,7 @@ def logout():
     }
     response = requests.post(api_url + '/logout', headers = {'Authorization': 'Bearer ' + token}, json=token_object)
     if response.status_code == 200:
-        session.pop('token', None)
+        session.clear()
         return redirect(url_for('index'))
     else:
         raise Exception(response.json()['detail'])
@@ -178,7 +176,7 @@ def adduser():
             'password': password,
             'email': email
         }
-        response = requests.post(api_url + '/adduser', json=user_object)
+        response = requests.post(api_url + '/user', json=user_object)
         if response.status_code == 200:
             flash('Usuário adicionado com sucesso!')
             return redirect(url_for('login'))
@@ -191,7 +189,9 @@ def adduser():
 @app.route("/startpage", methods=['GET', 'POST'])
 def startpage():
     if validate_token() == True:
-        return stream_template('start_page.html', title="Inicio")
+        flashes = session.get('_flashes', [])
+        print(flashes)
+        return render_template('start_page.html', title="Inicio")
     else:
         return redirect(url_for('index'))
 
@@ -207,7 +207,7 @@ def adddirectory():
             'directory_path': directory_path,
             'username': username
         }
-        response = requests.post(api_url + '/adddirectory', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
+        response = requests.post(api_url + '/directory', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
         if response.status_code == 200:
             FlaskCache.delete_cache('all_directories')
             flash('Directory added', 'success')
@@ -223,10 +223,9 @@ def deletedirectory():
         username = get_username()
         token = get_token()
         directory_object = {
-            'directory_name': directory_name,
-            'username': username
+            'directory_name': directory_name
         }
-        response = requests.post(api_url + '/deletedirectory', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
+        response = requests.delete(api_url + '/directory', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
         if response.status_code == 200:
             FlaskCache.delete_cache('all_directories')
             return redirect(url_for('startpage'))
@@ -244,10 +243,10 @@ def listdirectoryfiles():
                 'directory_name': directory_name
             }
             folder_size = get_folder_size(directory_name)
-            response = requests.get(api_url + '/listdirectoryfiles', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
+            response = requests.get(api_url + '/directory/file/all', headers={'Authorization': 'Bearer ' + token}, json=directory_object)
             if response.status_code == 200:
-                files = response.json().get('listdirectoryfiles', 'No files')
-                return stream_template('files.html', files=files, folder_size=folder_size, title=directory_name)
+                files = response.json().get('files', 'No files')
+                return render_template('files.html', files=files, folder_size=folder_size, title=directory_name)
             else:
                 flash("Pasta não encontrada", 'error')
                 return redirect(url_for('startpage'))
@@ -281,9 +280,9 @@ def change_user_password():
                 'new_password': new_password,
                 'token': token
             }
-            response = requests.post(api_url + '/change_user_password', headers={'Authorization': 'Bearer ' + token}, json=user_object)
+            response = requests.put(api_url + '/user/password', headers={'Authorization': 'Bearer ' + token}, json=user_object)
             if response.status_code == 200:
-                flash('Password changed', 'success')
+                flash(response.json()['detail'], 'success')
                 return redirect(url_for('startpage'))
             else:
                 flash(response.json()['detail'], 'error')
@@ -312,24 +311,83 @@ def config_user_authorized(username, authorized):
                 'username': username,
                 'autorized': authorized_status
             }
-            response = requests.post(api_url + '/change_user_type', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=user_object)
-            directories = get_all_directories()
+            response = requests.put(api_url + '/user/authorized', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=user_object)
             if response.status_code == 200:
-                flash('User updated', 'success')
+                flash(response.json()['detail'], 'success')
                 return redirect(url_for('config'))
             else:
                 flash(response.json()['detail'], 'error')
                 return redirect(url_for('config'))
 
+@app.route("/config/user", methods=['POST'])
+def config_user_update_fields():
+    if validate_token() == True and is_admin_from_cache() == True:
+        if request.method == 'POST':
+            token = get_token()
+            old_username = request.form['oldUserName']
+            username = request.form['userName']
+            email = request.form['userEmail']
+            userType = request.form['userType']
 
+            update_username = {
+                'old_username': old_username, 
+                'new_username': username
+            }
+
+            update_email = {
+                'username': username,
+                'email': email
+            }
+
+            update_userType = {
+                'username': username,
+                'userType': userType
+            }
+            print(update_username)
+            if len(username) > 3 :
+                response = requests.put(api_url + '/user/name', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=update_username)
+                if response.status_code == 200:
+                    flash(response.json()['detail'], 'success')
+                    return redirect(url_for('config'))
+                else:
+                    flash(response.json()['detail'], 'error')
+                    return redirect(url_for('config'))
+            elif len(username) < 3:
+                flash("Nome de usuário muito curto", 'error')
+                return redirect(url_for('config'))
+
+            if len(email) > 3 :
+                response = requests.put(api_url + '/user/email', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=update_email)
+                if response.status_code == 200:
+                    flash(response.json()['detail'], 'success')
+                    return redirect(urrto", 'error')
+                return redirect(url_for('config'))
+
+            if len(userType) > 3 :
+                response = requests.put(api_url + '/user/type', headers = {'Authorization': 'Bearer ' + token}, params={'token':token} ,json=update_userType)
+                if response.status_code == 200:
+                    flash(response.json()['detail'], 'success')
+                    return redirect(url_for('config'))
+                else:
+                    flash(response.json()['detail'], 'error')
+                    return redirect(url_for('config'))
+            elif len(userType) < 3:
+                flash("Tipo de usuário muito curto", 'error')
+                return redirect(url_for('config'))l_for('config'))
+                else:
+                    flash(response.json()['detail'], 'error')
+                    return redirect(url_for('config'))
+            elif len(email) < 3:
+                flash("Email muito curto", 'error')
+            
 @app.route("/list_users", methods=['GET', 'POST'])
 def list_users():
     if validate_token() == True:
         if request.method == 'GET':
             token = get_token()
-            response = requests.get(api_url + '/list_users', headers={'Authorization': 'Bearer ' + token}, params={'token':token})
+            response = requests.get(api_url + '/user/all', headers={'Authorization': 'Bearer ' + token}, params={'token':token})
             if response.status_code == 200:
-                users = response.json().get('list_users', 'No users')
+                users = response.json().get('users', 'No users')
                 return users
             else:
                 return ''
@@ -339,10 +397,7 @@ def delete_user(username):
     if validate_token() == True:
         if request.method == 'POST':
             token = get_token()
-            user_object = {
-                'username': username
-            }
-            response = requests.post(api_url + '/delete_user', headers={'Authorization': 'Bearer ' + token}, params={'token':token},json=user_object)
+            response = requests.delete(api_url + '/user/', headers={'Authorization': 'Bearer ' + token}, params={'token':token}, json={'username': username})
             if response.status_code == 200:
                 flash('User deleted', 'success')
                 return redirect(url_for('config'))
