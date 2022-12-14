@@ -4,7 +4,8 @@ from fastapi import FastAPI, Body, Depends, HTTPException, status, Request, Resp
 from pydantic import BaseModel
 import os
 
-from base_start import Users, Token, Directories, session, check_user_type, check_username_with_token, check_admin_with_token, Config, hash_password, check_password, generate_token, JWTBearer, check_user_exists
+from base_start import Users, Token, Directories, session, check_user_type, check_username_with_token, check_admin_with_token, Config, hash_password, check_password, generate_token
+from base_start import JWTBearer, check_user_exists, Intervals
 from os_functions import listalldirectoryfiles, downloadfile_from_path, get_os_disk_space, get_os_folder_size
 
 app = fastapi.FastAPI()
@@ -300,3 +301,37 @@ def update_config(data: Config.Api_update, token: str = Depends(check_admin_with
             detail="Configuração não existe"
         )
     return {"detail": "Configuração alterada com sucesso"}
+
+
+@app.get("/config/interval", dependencies=[Depends(JWTBearer())])
+def interval(data: Intervals.Api_list, token: str = Depends(check_admin_with_token)):
+    interval = Intervals.Api_list.get_interval(data.interval)
+    return {"interval": interval}
+
+@app.get("/config/interval/all", dependencies=[Depends(JWTBearer())])
+def all_intervals(token: str = Depends(check_admin_with_token)):
+    intervals = Intervals.Api_list.get_all_intervals()
+    return {"intervals": intervals}
+
+@app.post("/config/interval", dependencies=[Depends(JWTBearer())])
+def add_interval(data: Intervals.Api_add, token: str = Depends(check_admin_with_token)):
+    username = check_username_with_token(token)
+    interval = Intervals.Api_add.add_interval(data.interval, username)
+    if interval is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="Intervalo já existe"
+        )
+    return {"add_interval": "Intervalo criado com sucesso"}
+
+@app.delete("/config/interval", dependencies=[Depends(JWTBearer())])
+def delete_interval(data: Intervals.Api_delete, token: str = Depends(check_admin_with_token)):
+    username = check_username_with_token(token)
+    interval = Intervals.Api_delete.delete_interval(data.interval, username)
+    if interval is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="Intervalo não existe"
+        )
+    return {"delete_interval": "Intervalo deletado com sucesso"}
+

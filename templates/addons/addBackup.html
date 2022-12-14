@@ -23,23 +23,10 @@
             <div class="col">
             <label for="configName" class="form-label">Intervalo</label>
             <select class="form-select text-bg-dark" aria-label="Default select example" id="backupDay" name="backupDay">
-              <option value="1" selected>Todos os Dias</option>
-              <option value="2">Segunda-feira</option>
-              <option value="3">Terça-feira</option>
-              <option value="4">Quarta-feira</option>
-              <option value="5">Quinta-feira</option>
-              <option value="6">Sexta-feira</option>
-              <option value="7">Sábado</option>
-              <option value="8">Domingo</option>
-              <option value="9">2 dias</option>
-              <option value="10">3 dias</option>
-              <option value="11">4 dias</option>
-              <option value="12">5 dias</option>
-              <option value="13">10 dias</option>
-              <option value="14">15 dias</option>
-              <option value="15">20 dias</option>
-              <option value="16">25 dias</option>
-              <option value="17">30 dias</option>
+              {% set intervals = get_intervals() %}
+              {% for interval in intervals %}
+                <option value="{{interval.id}}">{{interval.interval}}</option>
+              {% endfor %}
             </select>
             </div>
             <div class="col">
@@ -57,7 +44,10 @@
   <script>
     var myModal = document.getElementById('offcanvasAddBackup')
     var myInput = document.getElementById('offcanvasAddBackup')
-  
+    
+    intervals = {{get_intervals()|tojson}}
+    console.log(intervals)
+
     myModal.addEventListener('shown.bs.modal', function () {
       myInput.focus()
     })

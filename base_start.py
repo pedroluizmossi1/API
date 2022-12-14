@@ -342,6 +342,7 @@ class Backups(Base):
     backup_path = sqlalchemy.Column(sqlalchemy.String)
     time = sqlalchemy.Column(sqlalchemy.String)
     interval = sqlalchemy.Column(sqlalchemy.String)
+    day = sqlalchemy.Column(sqlalchemy.String)
     connection_string = sqlalchemy.Column(sqlalchemy.String)
     backup_type = sqlalchemy.Column(sqlalchemy.String)
     backup_status = sqlalchemy.Column(sqlalchemy.String)
@@ -352,7 +353,7 @@ class Backups(Base):
         sqlalchemy.DateTime, default=datetime.datetime.utcnow)
 
     def __repr__(self):
-        return f"Backups(id={self.id}, backup_name={self.backup_name}, backup_path={self.backup_path}, time={self.time}, interval={self.interval}, connection_string={self.connection_string}, backup_type={self.backup_type}, backup_status={self.backup_status}, backup_user={self.backup_user}, backup_password={self.backup_password}, username={self.username})"
+        return f"Backups(id={self.id}, backup_name={self.backup_name}, backup_path={self.backup_path}, time={self.time}, interval={self.interval}, day={self.day} connection_string={self.connection_string}, backup_type={self.backup_type}, backup_status={self.backup_status}, backup_user={self.backup_user}, backup_password={self.backup_password}, username={self.username})"
 
     class Api_add(BaseModel):
         backup_name: str
@@ -366,9 +367,9 @@ class Backups(Base):
         backup_password: str
         username: str
 
-        def add_backup(backup_name, backup_path, time, interval, connection_string, backup_type, backup_status, backup_user, backup_password, username):
+        def add_backup(backup_name, backup_path, time, interval, day, connection_string, backup_type, backup_status, backup_user, backup_password, username):
             try:
-                backup = Backups(backup_name=backup_name, backup_path=backup_path, time=time, interval=interval, connection_string=connection_string, backup_type=backup_type, backup_status=backup_status, backup_user=backup_user, backup_password=backup_password, username=username)
+                backup = Backups(backup_name=backup_name, backup_path=backup_path, time=time, interval=interval, day=day, connection_string=connection_string, backup_type=backup_type, backup_status=backup_status, backup_user=backup_user, backup_password=backup_password, username=username)
                 session.add(backup)
                 session.commit()
                 return backup
@@ -382,6 +383,7 @@ class Backups(Base):
         backup_path: str
         time: str
         interval: str
+        day: str
         connection_string: str
         backup_type: str
         backup_status: str
@@ -389,11 +391,12 @@ class Backups(Base):
         backup_password: str
         username: str
 
-        def update_backup(backup_name, backup_path, time, interval, connection_string, backup_type, backup_status, backup_user, backup_password, username):
+        def update_backup(backup_name, backup_path, time, interval, day, connection_string, backup_type, backup_status, backup_user, backup_password, username):
             backup = session.query(Backups).filter_by(backup_name=backup_name).first()
             backup.backup_path = backup_path
             backup.time = time
             backup.interval = interval
+            backup.day = day
             backup.connection_string = connection_string
             backup.backup_type = backup_type
             backup.backup_status = backup_status
@@ -464,7 +467,93 @@ class Backups_logs(Base):
         return backup_log
 
 
-        
+class Intervals(Base):
+    __tablename__ = 'intervals'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    interval = sqlalchemy.Column(sqlalchemy.String)
+    time = sqlalchemy.Column(sqlalchemy.String)
+
+    def __repr__(self):
+        return f"Intervals(id={self.id}, interval={self.interval}, time={self.time})"
+
+    class Api_add(BaseModel):
+        interval: str
+        time: str
+
+        def add_interval(interval, time):
+            try:
+                interval = Intervals(interval=interval, time=time)
+                session.add(interval)
+                session.commit()
+                return interval
+            except Exception as error:
+                session.flush()
+                session.rollback()
+                return None
+
+    class Api_list(BaseModel):
+        interval: str
+
+        def get_interval(interval):
+            interval = session.query(Intervals).filter_by(interval=interval).first()
+            return interval
+
+        def get_all_intervals():
+            interval = session.query(Intervals).all()
+            return interval
+
+    class Api_delete(BaseModel):
+        interval: str
+
+        def delete_interval(interval):
+            interval = session.query(Intervals).filter_by(interval=interval).first()
+            session.delete(interval)
+            session.commit()
+            return interval
+
+    def create_intervals():
+        intervals = ['Diário', 'Semanal', 'Mensal', '5 Dias', '10 Dias', '15 Dias']
+        # time in seconds
+        time = [86400, 604800, 2592000, 432000, 864000, 1296000]
+        for interval, time in zip(intervals, time):
+            try:
+                interval = Intervals(interval=interval, time=time)
+                session.add(interval)
+                session.commit()
+            except Exception as error:
+                session.flush()
+                session.rollback()
+                return None
+
+
+class Days(Base):
+    __tablename__ = 'days'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    day = sqlalchemy.Column(sqlalchemy.String, unique=True)
+
+    def __repr__(self):
+        return f"Days(id={self.id}, day={self.day})"
+
+    class Api_list(BaseModel):
+        day: str
+
+        def get_day(day):
+            day = session.query(Days).filter_by(day=day).first()
+            return day
+
+        def get_all_days():
+            day = session.query(Days).all()
+            return day
+
+    # crie todos os dias da semana
+    def create_days():
+        days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+        for day in days:
+            day = Days(day=day)
+            session.add(day)
+            session.commit()
+        return day
+
 
 Base.metadata.create_all(engine)
 
@@ -510,3 +599,9 @@ if  session.query(Users).filter_by(username="admin").first() == None:
     admin = Users(username='admin', password=hash_password('admin'), type='admin',email="pedroluizmossi@gmail.com", autorized=True)
     session.add(admin)
     session.commit()
+
+if Days.Api_list.get_all_days() == []:
+        Days.create_days()
+
+if Intervals.Api_list.get_all_intervals() == []:
+        Intervals.create_intervals()

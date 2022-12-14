@@ -49,6 +49,14 @@ def get_username():
     username = session.get('username', 'anonymous')
     return username
 
+def get_intervals():
+    if validate_token() == True:
+        token = get_token()
+        response = requests.get(api_url + '/config/interval/all', headers = {'Authorization': 'Bearer ' + token}, params={'token': token})
+        if response.status_code == 200:
+            intervals = response.json()["intervals"]
+            return intervals
+
 @cache.cached(timeout=120, key_prefix='all_directories')
 def get_all_directories():
     if validate_token() == True:
@@ -400,4 +408,4 @@ def config_config_update_fields():
                     return redirect(url_for('config'))
 
 #Jinja2 global functions
-app.jinja_env.globals.update(get_disk_space=get_disk_space, isAdmin=is_admin_from_cache, get_all_directories=get_all_directories, get_all_folders_size=get_all_folders_size)
+app.jinja_env.globals.update(get_disk_space=get_disk_space, isAdmin=is_admin_from_cache, get_all_directories=get_all_directories, get_all_folders_size=get_all_folders_size, get_intervals=get_intervals)
