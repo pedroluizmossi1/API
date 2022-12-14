@@ -3,10 +3,16 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import FastAPI, Body, Depends, HTTPException, status, Request, Response, Depends
 from pydantic import BaseModel
 import os
+import schedule
+import time
+import threading
 
 from base_start import Users, Token, Directories, session, check_user_type, check_username_with_token, check_admin_with_token, Config, hash_password, check_password, generate_token
-from base_start import JWTBearer, check_user_exists, Intervals
+from base_start import JWTBearer, check_user_exists, Intervals, check_user_autorized, Backups, Backups_types, Intervals
 from os_functions import listalldirectoryfiles, downloadfile_from_path, get_os_disk_space, get_os_folder_size
+from schedules import seconds_to_minutes, seconds_to_days
+
+
 
 app = fastapi.FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -19,9 +25,14 @@ def login(data: Users.Api_login):
             status_code=401,
             detail="Nome de usuário ou senha incorretos"
         )
-    elif user is not None:
+    elif user is not None and check_user_autorized(data.username) is True:
         print(user)
         return {"login": "success", "token": user["token"], "username": data.username, "type": user["type"]}
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Usuário não autorizado"
+        )
 
 class logout_form(BaseModel):
     token: str
@@ -335,3 +346,75 @@ def delete_interval(data: Intervals.Api_delete, token: str = Depends(check_admin
         )
     return {"delete_interval": "Intervalo deletado com sucesso"}
 
+@app.get("/config/type/all", dependencies=[Depends(JWTBearer())])
+def all_type(token: str = Depends(check_admin_with_token)):
+    type = Backups_types.Api_list.get_all_backups_types()
+    return {"types": type}
+
+@app.get("/backup/all", dependencies=[Depends(JWTBearer())])
+def all_backups(token: str = Depends(check_admin_with_token)):
+    backups = Backups.Api_list.list_all_backups()
+    return {"backups": backups}
+
+@app.post("/backup", dependencies=[Depends(JWTBearer())])
+def add_backup(data: Backups.Api_add, token: str = Depends(check_admin_with_token)):
+    username = check_username_with_token(token)
+    backup = Backups.Api_add.add_backup(data.backup_name, data.backup_path, data.time, data.interval, data.day, data.connection_string, data.backup_type, data.backup_user, data.backup_password, username)
+    if backup is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="Backup já existe"
+        )
+    return {"add_backup": "Backup criado com sucesso"}
+
+@app.delete("/backup", dependencies=[Depends(JWTBearer())])
+def delete_backup(data: Backups.Api_delete, token: str = Depends(check_admin_with_token)):
+    username = check_username_with_token(token)
+    backup = Backups.Api_delete.delete_backup(data.backup_name, username)
+    if backup is None:
+        raise fastapi.HTTPException(
+            status_code=422, 
+            detail="Backup não existe"
+        )
+    return {"delete_backup": "Backup deletado com sucesso"}
+
+
+
+
+
+
+
+def run_continuously(interval=5):
+    cease_continuous_run = threading.Event()
+
+    class ScheduleThread(threading.Thread):
+        @classmethod
+        def run(cls):
+            while not cease_continuous_run.is_set():
+                schedule.run_pending()
+                time.sleep(interval)
+
+    continuous_thread = ScheduleThread()
+    continuous_thread.start()
+    return cease_continuous_run
+
+
+def print_date_time():
+    print("agr")
+
+def background_job_list():
+    backups = Backups.Api_list.list_all_backups()
+    for backup in backups:
+        if backup.backup_status == '1':
+            seconds = Intervals.Api_list.get_interval(int(backup.interval))
+            seconds = seconds.time
+            days = seconds_to_days(int(seconds))
+            schedule.every(days).days.at(backup.time).do(print_date_time())
+        else:
+            print("Backup desativado")
+
+
+schedule.every().second.do(background_job_list)
+
+# Start the background thread
+stop_run_continuously = run_continuously()

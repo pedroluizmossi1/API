@@ -37,12 +37,14 @@
                      </tr>
                   </thead>
                   <tbody>
+                     {% for backup in backups %}
                      <tr>
-                        <th scope="row">1</th>
-                        <td>10.0.120.238/1521/DBPROD</td>
-                        <td>BACKUP DBPROD</td>
-                        <td>23:00:00</td>
+                        <th scope="row">{{backup.id}}</th>
+                        <td>{{backup.connection_string}}</td>
+                        <td>{{backup.backup_path}}</td>
+                        <td>{{backup.interval}} - {{backup.time}}</td>
                      </tr>
+                     {% endfor %}
                   </tbody>
                </table>
             </div>

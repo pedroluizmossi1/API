@@ -56,6 +56,18 @@ def get_intervals():
         if response.status_code == 200:
             intervals = response.json()["intervals"]
             return intervals
+        else:
+            return []
+            
+def get_types():
+    if validate_token() == True:
+        token = get_token()
+        response = requests.get(api_url + '/config/type/all', headers = {'Authorization': 'Bearer ' + token}, params={'token': token})
+        if response.status_code == 200:
+            types = response.json()["types"]
+            return types
+        else:
+            return []
 
 @cache.cached(timeout=120, key_prefix='all_directories')
 def get_all_directories():
@@ -119,6 +131,13 @@ def get_all_configs():
         response = requests.get(api_url + '/config/all', headers = {'Authorization': 'Bearer ' + token}, params={'token': token})
         all_configs = response.json()["all_configs"]
         return all_configs
+
+def get_all_backups():
+    if validate_token() == True:
+        token = get_token()
+        response = requests.get(api_url + '/backup/all', headers = {'Authorization': 'Bearer ' + token}, params={'token': token})
+        backups = response.json()["backups"]
+        return backups
 
 class FlaskCache:
     def __init__(self, cache):
@@ -310,7 +329,8 @@ def config():
 def backup():
     if validate_token() == True and is_admin_from_cache() == True:
         if request.method == 'GET':
-            return render_template('backup.html', title="Backup")
+            backups = get_all_backups()
+            return render_template('backup.html', title="Backup", backups=backups)
     else:
         return redirect(url_for('startpage'))
 
@@ -401,11 +421,35 @@ def config_config_update_fields():
             else:
                 response = requests.put(api_url + '/config', headers={'Authorization': 'Bearer ' + token}, params={'token':token} ,json={'config_name': config_name, 'config_value': config_value})
                 if response.status_code == 200:
-                    flash("Informações atualizadas com sucesso", 'success')
-                    return redirect(url_for('config'))
+                    backups = response.json()
+                    return backups
                 else:
-                    flash("Erro ao atualizar informações", 'error')
-                    return redirect(url_for('config'))
+                    return ''
 
+@app.route("/add_backup", methods=['GET', 'POST'])
+def add_backup():
+    if validate_token() == True and is_admin_from_cache() == True:
+        if request.method == 'POST':
+            token = get_token()
+            username = get_username()
+            backup = {
+            'backup_name': request.form['backupName'],
+            'backup_path': request.form['backupPath'],
+            'time': request.form['backupTime'],
+            'interval': request.form['backupInterval'],
+            'day': '',
+            'connection_string': request.form['backupString'],
+            'backup_type': request.form['backupType'],
+            'backup_user': request.form['backupUser'],
+            'backup_password': request.form['backupPassword'],
+            'username': username
+            }
+            response = requests.post(api_url + '/backup', headers={'Authorization': 'Bearer ' + token}, params={'token':token} ,json=backup)
+            if response.status_code == 200:
+                flash('Backup added', 'success')
+                return redirect(url_for('backup'))
+            else:
+                flash(response.json()['detail'], 'error')
+                return redirect(url_for('backup'))
 #Jinja2 global functions
-app.jinja_env.globals.update(get_disk_space=get_disk_space, isAdmin=is_admin_from_cache, get_all_directories=get_all_directories, get_all_folders_size=get_all_folders_size, get_intervals=get_intervals)
+app.jinja_env.globals.update(get_disk_space=get_disk_space, isAdmin=is_admin_from_cache, get_all_directories=get_all_directories, get_all_folders_size=get_all_folders_size, get_intervals=get_intervals, get_types=get_types)

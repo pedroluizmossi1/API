@@ -360,16 +360,17 @@ class Backups(Base):
         backup_path: str
         time: str
         interval: str
+        day: str
         connection_string: str
         backup_type: str
-        backup_status: str
         backup_user: str
         backup_password: str
         username: str
 
-        def add_backup(backup_name, backup_path, time, interval, day, connection_string, backup_type, backup_status, backup_user, backup_password, username):
+        def add_backup(backup_name, backup_path, time, interval, day, connection_string, backup_type, backup_user, backup_password, username):
             try:
-                backup = Backups(backup_name=backup_name, backup_path=backup_path, time=time, interval=interval, day=day, connection_string=connection_string, backup_type=backup_type, backup_status=backup_status, backup_user=backup_user, backup_password=backup_password, username=username)
+                password = hash_password(backup_password)
+                backup = Backups(backup_name=backup_name, backup_path=backup_path, time=time, interval=interval, day=day, connection_string=connection_string, backup_type=backup_type, backup_status=True, backup_user=backup_user, backup_password=password, username=username)
                 session.add(backup)
                 session.commit()
                 return backup
@@ -407,19 +408,25 @@ class Backups(Base):
             session.commit()
             return backup
 
-    def get_all_backups():
-        backup = session.query(Backups).all()
-        return backup
+    class Api_list(BaseModel):
+        backup_name: str
 
-    def get_backup(backup_name):
-        backup = session.query(Backups).filter_by(backup_name=backup_name).first()
-        return backup
+        def list_backup(backup_name):
+            backup = session.query(Backups).filter_by(backup_name=backup_name).first()
+            return backup
+        
+        def list_all_backups():
+            backup = session.query(Backups).all()
+            return backup
 
-    def delete_backup(backup_name):
-        backup = session.query(Backups).filter_by(backup_name=backup_name).first()
-        session.delete(backup)
-        session.commit()
-        return backup
+    class Api_delete(BaseModel):
+        backup_name: str
+
+        def delete_backup(backup_name):
+            backup = session.query(Backups).filter_by(backup_name=backup_name).first()
+            session.delete(backup)
+            session.commit()
+            return backup
 
 # create table to save backups logs and status
 class Backups_logs(Base):
@@ -494,8 +501,8 @@ class Intervals(Base):
     class Api_list(BaseModel):
         interval: str
 
-        def get_interval(interval):
-            interval = session.query(Intervals).filter_by(interval=interval).first()
+        def get_interval(id):
+            interval = session.query(Intervals).filter_by(id=id).first()
             return interval
 
         def get_all_intervals():
@@ -554,6 +561,32 @@ class Days(Base):
             session.commit()
         return day
 
+class Backups_types(Base):
+    __tablename__ = 'backups_types'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    backup_type = sqlalchemy.Column(sqlalchemy.String, unique=True)
+
+    def __repr__(self):
+        return f"Backups_types(id={self.id}, backup_type={self.backup_type})"
+
+    class Api_list(BaseModel):
+        backup_type: str
+
+        def get_backup_type(backup_type):
+            backup_type = session.query(Backups_types).filter_by(backup_type=backup_type).first()
+            return backup_type
+
+        def get_all_backups_types():
+            backup_type = session.query(Backups_types).all()
+            return backup_type
+
+    def create_backups_types():
+        backups_types = ['Full', 'Incremental']
+        for backup_type in backups_types:
+            backup_type = Backups_types(backup_type=backup_type)
+            session.add(backup_type)
+            session.commit()
+        return backup_type
 
 Base.metadata.create_all(engine)
 
@@ -588,6 +621,12 @@ def check_admin_with_token(token: str):
     else:
         raise HTTPException(status_code=401, detail="Not authorized")
 
+def check_user_autorized(username):
+    user = session.query(Users).filter_by(username=username).first()
+    if user.autorized == True:
+        return True
+    else:
+        return False
 
 if Config.check_config('api_url') is None:
     config = configparser.ConfigParser()
@@ -605,3 +644,6 @@ if Days.Api_list.get_all_days() == []:
 
 if Intervals.Api_list.get_all_intervals() == []:
         Intervals.create_intervals()
+
+if Backups_types.Api_list.get_all_backups_types() == []:
+        Backups_types.create_backups_types()

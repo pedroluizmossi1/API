@@ -5,24 +5,46 @@
       <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
-      <form action="{{url_for('config_config_update_fields')}}" method="POST">   
+      <form action="{{url_for('add_backup')}}" method="POST">
         <div class="mb-3">
-            <label for="configName" class="form-label">String de Conexão</label>
-            <input type="text" class="form-control text-bg-dark " id="backupString" name="backupString" value="" required minlength="3">
+          <label for="backupName" class="form-label">Nome do Backup</label>
+          <input type="text" class="form-control text-bg-dark " id="backupName" name="backupName" value="" required minlength="3">
+        </div>
+        <div class="mb-3">
+          <label for="backupPath" class="form-label">Pasta</label>
+            <select class="form-select text-bg-dark" aria-label="Default select example" id="backupPath" name="backupPath">
+              {% set directories = get_all_directories() %}
+              {% for directory in directories[0] %}
+                <option value="{{directory}}">{{directory}}</option>
+              {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="backupString" class="form-label">String de Conexão</label>
+            <input type="text" class="form-control text-bg-dark " id="backupString" name="backupString" value="" required minlength="3" placeholder="10.0.120.238:1521/DBPROD">
           </div>
           <div class="mb-3">
-            <label for="configName" class="form-label">Usuário</label>
-            <input type="text" class="form-control text-bg-dark " id="backupUser" name="backupUser" value="" required minlength="3">
+            <label for="backupUser" class="form-label">Usuário</label>
+            <input type="text" class="form-control text-bg-dark " id="backupUser" name="backupUser" value="" required minlength="3" placeholder="Usuario que realizara o backup">
           </div>
           <div class="mb-3">
-            <label for="configName" class="form-label">Senha</label>
+            <label for="backupPassword" class="form-label">Senha</label>
             <input type="password" class="form-control text-bg-dark " id="backupPassword" name="backupPassword" value="" required minlength="3">
+          </div>
+          <div class="mb-3">
+          <label for="backupType" class="form-label">Tipo</label>
+            <select class="form-select text-bg-dark" aria-label="Default select example" id="backupType" name="backupType">
+              {% set types = get_types() %}
+              {% for type in types %}
+                <option value="{{type.id}}">{{type.backup_type}}</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="mb-3">
             <div class="row">
             <div class="col">
-            <label for="configName" class="form-label">Intervalo</label>
-            <select class="form-select text-bg-dark" aria-label="Default select example" id="backupDay" name="backupDay">
+            <label for="backupInterval" class="form-label">Intervalo</label>
+            <select class="form-select text-bg-dark" aria-label="Default select example" id="backupInterval" name="backupInterval">
               {% set intervals = get_intervals() %}
               {% for interval in intervals %}
                 <option value="{{interval.id}}">{{interval.interval}}</option>
@@ -30,7 +52,7 @@
             </select>
             </div>
             <div class="col">
-            <label for="configName" class="form-label">Horário</label>
+            <label for="backupTime" class="form-label">Horário</label>
             <input type="time" class="form-control text-bg-dark " id="backupTime" name="backupTime" value="" required minlength="3">
           </div>
           </div>
@@ -46,7 +68,6 @@
     var myInput = document.getElementById('offcanvasAddBackup')
     
     intervals = {{get_intervals()|tojson}}
-    console.log(intervals)
 
     myModal.addEventListener('shown.bs.modal', function () {
       myInput.focus()
