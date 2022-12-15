@@ -1,4 +1,6 @@
 import sqlalchemy
+from datetime import timedelta
+from datetime import datetime as dt
 import datetime
 from sqlalchemy.orm import declarative_base, sessionmaker
 import time
@@ -9,17 +11,40 @@ import bcrypt
 from uuid import uuid4
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import HTTPException, Request
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
+from pytz import utc
 
 timezone = datetime.timezone(datetime.timedelta(hours=-3))
 timezone_br = datetime.datetime.now(timezone)
 
+database_name = 'sqlite:///base.db'
+
 engine = sqlalchemy.create_engine(
-    'sqlite:///base.db', connect_args={'check_same_thread': False})
+    database_name, connect_args={'check_same_thread': False})
 metadata = sqlalchemy.MetaData()
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 session = Session()
 
+
+scheduler = BackgroundScheduler()
+
+jobstores = {
+    'default': SQLAlchemyJobStore(url=database_name)
+}
+executors = {
+    'default': ThreadPoolExecutor(20),
+    'processpool': ProcessPoolExecutor(5)
+}
+job_defaults = {
+    'coalesce': False,
+    'max_instances': 3
+}
+scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults, timezone=utc)
+
+scheduler.start()
 
 def hash_password(password):
     password = str(password).encode('utf-8')
@@ -373,11 +398,35 @@ class Backups(Base):
                 backup = Backups(backup_name=backup_name, backup_path=backup_path, time=time, interval=interval, day=day, connection_string=connection_string, backup_type=backup_type, backup_status=True, backup_user=backup_user, backup_password=password, username=username)
                 session.add(backup)
                 session.commit()
+                try:
+                    today = datetime.datetime.now()
+                    if datetime.datetime.strptime(time, '%H:%M') > today:
+                        backup_next = today.replace(hour=int(time[0:2]), minute=int(time[3:5]))
+                    else:
+                        backup_next = today.replace(hour=int(time[0:2]), minute=int(time[3:5])) + timedelta(days=1)
+                    backup_last = today - timedelta(days=1)
+                    backup_job = Backups_jobs.Api_create.add_backup_job(5,'',backup_next, backup_last ,1, '', '')
+                    backup_job_id = str(backup_job.id)
+                    scheduler.add_job(print_hello,
+                        'interval',
+                        seconds= interval,
+                        id=backup_job_id,
+                        name=backup_name,
+                        next_run_time=backup_next,
+                        replace_existing=True
+                    )
+                except Exception as error:
+                    print(error)
+                    session.flush()
+                    session.rollback()
+                    return error
                 return backup
             except Exception as error:
                 session.flush()
                 session.rollback()
-                return None
+                return error
+
+
 
     class Api_update(BaseModel):
         backup_name: str
@@ -427,52 +476,6 @@ class Backups(Base):
             session.delete(backup)
             session.commit()
             return backup
-
-# create table to save backups logs and status
-class Backups_logs(Base):
-    __tablename__ = 'backups_logs'
-    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    backup_id = sqlalchemy.Column(sqlalchemy.Integer)
-    backup_name = sqlalchemy.Column(sqlalchemy.String)
-    backup_status = sqlalchemy.Column(sqlalchemy.String)
-    backup_log = sqlalchemy.Column(sqlalchemy.String)
-    backup_user = sqlalchemy.Column(sqlalchemy.String)
-    date = sqlalchemy.Column(
-        sqlalchemy.DateTime, default=datetime.datetime.utcnow)
-
-    def __repr__(self):
-        return f"Backups_logs(id={self.id}, backup_id={self.backup_id}, backup_name={self.backup_name}, backup_status={self.backup_status}, backup_log={self.backup_log}, backup_user={self.backup_user})"
-
-    class Api_add(BaseModel):
-        backup_id: int
-        backup_name: str
-        backup_status: str
-        backup_log: str
-        backup_user: str
-
-        def add_backup_log(backup_id, backup_name, backup_status, backup_log, backup_user):
-            try:
-                backup_log = Backups_logs(backup_id=backup_id, backup_name=backup_name, backup_status=backup_status, backup_log=backup_log, backup_user=backup_user)
-                session.add(backup_log)
-                session.commit()
-                return backup_log
-            except Exception as error:
-                session.flush()
-                session.rollback()
-                return None
-
-    def get_all_backups_logs():
-        backup_log = session.query(Backups_logs).all()
-        return backup_log
-
-    def get_backup_log(backup_name):
-        backup_log = session.query(Backups_logs).filter_by(backup_name=backup_name).first()
-        return backup_log
-
-    def get_backups_status(backup_status):
-        backup_log = session.query(Backups_logs).filter_by(backup_status=backup_status).all()
-        return backup_log
-
 
 class Intervals(Base):
     __tablename__ = 'intervals'
@@ -588,6 +591,52 @@ class Backups_types(Base):
             session.commit()
         return backup_type
 
+
+class Backups_jobs(Base):
+    __tablename__ = 'backups_jobs'
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    backup_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('backups.id'))
+    backup_log = sqlalchemy.Column(sqlalchemy.String)
+    backup_next = sqlalchemy.Column(sqlalchemy.DateTime)
+    backup_last = sqlalchemy.Column(sqlalchemy.DateTime)
+    backup_interval = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey('intervals.id'))
+    backup_status = sqlalchemy.Column(sqlalchemy.String)
+    backup_log_file = sqlalchemy.Column(sqlalchemy.String)
+
+    def __repr__(self):
+        return f"Backups_jobs(id={self.id}, backup_id={self.backup_id}, backup_log={self.backup_log}, backup_next={self.backup_next}, backup_last={self.backup_last}, backup_interval={self.backup_interval}, backup_status={self.backup_status}, backup_log_file={self.backup_log_file})"
+
+    class Api_list(BaseModel):
+        backup_id: str
+
+        def get_backup_job(backup_id):
+            backup_job = session.query(Backups_jobs).filter_by(backup_id=backup_id).first()
+            return backup_job
+
+        def get_all_backups_jobs():
+            backup_job = session.query(Backups_jobs).all()
+            return backup_job
+
+    class Api_create(BaseModel):
+        backup_id: str
+        backup_log: str
+        backup_next: str
+        backup_last: str
+        backup_interval: str
+        backup_status: str
+        backup_log_file: str
+
+        def add_backup_job(backup_id, backup_log, backup_next, backup_last, backup_interval, backup_status, backup_log_file):
+            try:
+                backup_job = Backups_jobs(backup_id=backup_id, backup_log=backup_log, backup_next=backup_next, backup_last=backup_last, backup_interval=backup_interval, backup_status=backup_status, backup_log_file=backup_log_file)
+                session.add(backup_job)
+                session.commit()
+                return backup_job
+            except Exception as error:
+                session.flush()
+                session.rollback()
+                return error
+
 Base.metadata.create_all(engine)
 
 def check_user_type(username):
@@ -647,3 +696,9 @@ if Intervals.Api_list.get_all_intervals() == []:
 
 if Backups_types.Api_list.get_all_backups_types() == []:
         Backups_types.create_backups_types()
+
+def print_hello():
+    print('Hello World')
+
+
+

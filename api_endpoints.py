@@ -3,9 +3,6 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import FastAPI, Body, Depends, HTTPException, status, Request, Response, Depends
 from pydantic import BaseModel
 import os
-import schedule
-import time
-import threading
 
 from base_start import Users, Token, Directories, session, check_user_type, check_username_with_token, check_admin_with_token, Config, hash_password, check_password, generate_token
 from base_start import JWTBearer, check_user_exists, Intervals, check_user_autorized, Backups, Backups_types, Intervals
@@ -380,41 +377,3 @@ def delete_backup(data: Backups.Api_delete, token: str = Depends(check_admin_wit
 
 
 
-
-
-
-
-def run_continuously(interval=5):
-    cease_continuous_run = threading.Event()
-
-    class ScheduleThread(threading.Thread):
-        @classmethod
-        def run(cls):
-            while not cease_continuous_run.is_set():
-                schedule.run_pending()
-                time.sleep(interval)
-
-    continuous_thread = ScheduleThread()
-    continuous_thread.start()
-    return cease_continuous_run
-
-
-def print_date_time():
-    print("agr")
-
-def background_job_list():
-    backups = Backups.Api_list.list_all_backups()
-    for backup in backups:
-        if backup.backup_status == '1':
-            seconds = Intervals.Api_list.get_interval(int(backup.interval))
-            seconds = seconds.time
-            days = seconds_to_days(int(seconds))
-            schedule.every(days).days.at(backup.time).do(print_date_time())
-        else:
-            print("Backup desativado")
-
-
-schedule.every().second.do(background_job_list)
-
-# Start the background thread
-stop_run_continuously = run_continuously()
