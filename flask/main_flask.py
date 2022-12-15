@@ -5,7 +5,6 @@ import requests
 from pydantic import BaseModel
 import datetime
 from flask_caching import Cache
-import configparser
 
 config = {
     "DEBUG": True,          # some Flask specific configs
@@ -23,9 +22,8 @@ cache.init_app(app)
 Session(app)
 
 #import config.ini api_url variable from FASTAPI
-config = configparser.ConfigParser()
-config.read('config.ini')
-api_url = config['FASTAPI']['api_url']
+
+api_url = 'http://127.0.0.1:8000'
 
 
 def set_cookie(response):
