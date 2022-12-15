@@ -6,6 +6,10 @@ from pydantic import BaseModel
 import datetime
 from flask_caching import Cache
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+
+
 config = {
     "DEBUG": True,          # some Flask specific configs
     "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
@@ -15,6 +19,10 @@ config = {
 app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
 
 app.config.from_mapping(config)
 cache = Cache(app)
@@ -143,6 +151,13 @@ class FlaskCache:
     
     def delete_cache(cache_name):
         cache.delete(cache_name)
+
+@app.route("/pt-BR/index.html")
+def index_nginx():
+    if validate_token() == True:
+        return redirect(url_for('startpage'))
+    else:
+        return render_template('index.html', title='Home')
 
 @app.route("/")
 def index():

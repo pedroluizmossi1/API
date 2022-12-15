@@ -6,7 +6,7 @@ kill -9 $(lsof -t -i:5000) $(lsof -t -i:8000)
 cd /home/api/API/fastapi
 
 # Start fastapi
-uvicorn main:app --reload &
+uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
 
 # Change to the flask directory
 cd /
